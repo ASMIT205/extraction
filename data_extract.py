@@ -11,7 +11,7 @@ from google.cloud import storage
 app = Flask(__name__)
 
 # Configure Tesseract executable path (update it according to your installation)
-pytesseract.pytesseract.tesseract_cmd = '/home/gkumar/.local/bin/tesseract'
+pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\ASMIT\\AppData\\Local\\Programs\\Tesseract-OCR\\tesseract.exe'
                                         #'myproject\.venv\Scripts\pytesseract.exe'
                                        # myproject\.venv\Lib\site-packages\pytesseract
 
@@ -72,10 +72,10 @@ def extract_text_and_date():
         return jsonify({'error': 'No selected file'}), 400
     file_path = f'uploads/{user_name}_{file.filename}'
     file.save(file_path)
-    unique_file_name = generate_unique_filename(file_path)
+    unique_file_path_name = generate_unique_filename(file_path)
 
     #file_path =r'C:\Users\ASMIT\Desktop\Fundabox\extraction\extraction\aman_test_2.jpeg'
-    upload_to_bucket(unique_file_name,file_path,'extraction_medi')
+    upload_to_bucket(unique_file_path_name,file_path,'extraction_medi')
 
     extracted_text=''
 
@@ -85,8 +85,9 @@ def extract_text_and_date():
         extracted_text = extract_text_from_image(file_path)
     extracted_date = extract_date_from_text(extracted_text)
     test_name = create_test_name(extracted_text)
-    write_to_master_json(user_name, extracted_text, extracted_date, test_name)
-    return jsonify({'user_name': user_name, 'extracted_text': extracted_text, 'extracted_date': extracted_date, 'test_name': test_name})
+    path_to_file=os.path.join('https://storage.cloud.google.com/extraction_medi', unique_file_path_name)
+    write_to_master_json(user_name, extracted_text, extracted_date, test_name,path_to_file)
+    return jsonify({'user_name': user_name, 'extracted_text': extracted_text, 'extracted_date': extracted_date, 'test_name': test_name,'file_path':path_to_file})
 def extract_text_from_pdf(pdf_path):
     try:
         print("PDF")
@@ -157,7 +158,7 @@ def create_test_name(text):
     # If no keyword is found, return a default value
     return "Test_name_not_found"
 
-def write_to_master_json(user_name, extracted_text, extracted_date, test_name):
+def write_to_master_json(user_name, extracted_text, extracted_date, test_name,unique_file_path_name):
     master_json_file_path = 'master_data_ocr.json'
 
     # Check if the master JSON file exists
@@ -175,7 +176,7 @@ def write_to_master_json(user_name, extracted_text, extracted_date, test_name):
 
     # Append the new data to the list
     new_data = {'user_name': user_name, 'extracted_text': extracted_text, 'extracted_date': extracted_date,
-                'test_name': test_name}
+                'test_name': test_name,'unique_file_path_name':unique_file_path_name}
     data_list.append(new_data)
 
     # Write the updated list to the master JSON file
@@ -190,11 +191,11 @@ def get_user_reports(user_name):
 
     # Filter reports for the specified user
     user_reports = [report for report in data if report['user_name'] == user_name]
-    extracted_data = [{'test_name': report['test_name'], 'extracted_date': report['extracted_date']} for report in user_reports]
+    extracted_data = [{'test_name': report['test_name'], 'extracted_date': report['extracted_date'],'unique_file_path_name':report['unique_file_path_name']} for report in user_reports]
 
     # Return the filtered reports as JSON response
     return jsonify(extracted_data)
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    app.run(host='0.0.0.0',port=5000, debug=True)
 
